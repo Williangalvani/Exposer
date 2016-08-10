@@ -14,8 +14,8 @@ void setup()
 void loop()
 {
 	digitalWrite(13,(led>100));
-	
-	if(Serial.available())
+
+	if (Serial.available())
 	{
 		uint8_t data = Serial.read();
 		exposer->processByte(data);
