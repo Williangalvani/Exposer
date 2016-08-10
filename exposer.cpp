@@ -3,18 +3,19 @@
 Exposer::Exposer()
 {
 	Serial.begin(115200);
+
 }
 
 Exposer& Exposer::self()
 {
-	static Exposer self;
-	return self;
+    static Exposer self;
+    return self;
 }
 
 void Exposer::registerVariable(String name, uint8_t typ, void* address)
 {
 	/*
-	Must be called like this:
+	Must be called like this: 
 
 	assuming you want to expose the "banana" variable, and it's an uint8_t:
 
@@ -45,16 +46,16 @@ void Exposer::sendVariable(uint8_t i)
 	sendByte('<');								// header
 	sendByte(REQUEST_ALL);						// operation
 	sendByte(i);								// target variable
-	crc = '<'^ REQUEST_ALL ^ i;
+	crc = '<'^ REQUEST_ALL ^ i;	
 	char buffer[10];							//maximum of 10 chars on variable
 	registeredNames[i].toCharArray(buffer,10);
 	buffer[9] = '\0';
 	int size = registeredNames[i].length();
 	sendByte(size+1);								// varsize + type
 	crc = crc ^ (size+1);
+	
 
-
-	for (int j = 0; j < size; j++)
+	for(int j = 0; j < size; j++)
 	{
 		sendByte(buffer[j]);
 		crc ^= buffer[j];
@@ -64,13 +65,12 @@ void Exposer::sendVariable(uint8_t i)
 
 	crc ^= registeredTypes[i];
 	sendByte(crc);									// crc
-}
+}	
 
 void Exposer::sendAllVariables()
 {
-	Serial.print("Sending all variables! count: ");
-	Serial.println(registerCounter);
-	for (int i = 0; i < registerCounter; i++)
+	Serial.print("Sending all variables! count: "); Serial.println(registerCounter);
+	for(int i = 0; i < registerCounter; i++)
 	{
 		sendVariable(i);
 	}
@@ -79,47 +79,47 @@ void Exposer::sendAllVariables()
 uint8_t Exposer::processByte(uint8_t data)
 {
 
-	switch (currentState)
+	switch(currentState)
 	{
 		case Exposer::WAITING_HEADER:
 			if (data == '<')
 			{
 				currentState = WAITING_OPERATION;
 			}
-			break;
+		break;
 
 
 		case WAITING_OPERATION:
 			currentOperation = data;
-			switch (data)
+			switch(data)
 			{
 				case REQUEST_ALL:
 					crc = '<' ^ REQUEST_ALL;
 					currentState = WAITING_CRC;
-					break;
-
+				break;
+			
 				case WRITE:
 					currentState = WAITING_TARGET;
-					break;
-
+				break;
+			
 				case READ:
 					currentState = WAITING_TARGET;
-					break;
+				break;
 
 				default:  // something went wrong?
 					currentOperation = 0;
 					currentState = WAITING_HEADER;
-					break;
+				break;
 			}
-
-			break;
+			
+		break;
 
 
 		case WAITING_TARGET:
 			currentTarget = data;
 			currentState = WAITING_PAYLOAD;
 			crc = '<' ^ currentOperation ^ currentTarget;
-			break;
+		break;
 
 
 		case WAITING_PAYLOAD:
@@ -127,7 +127,7 @@ uint8_t Exposer::processByte(uint8_t data)
 			payloadLeft = totalPayload;
 			currentState = WAITING_DATA;
 			crc ^= data;
-			break;
+		break;
 
 
 		case WAITING_DATA:
@@ -138,33 +138,33 @@ uint8_t Exposer::processByte(uint8_t data)
 			{
 				currentState = WAITING_CRC;
 			}
-			break;
+		break;
 
 		case WAITING_CRC:
 			if (crc == data)
 			{
-				switch (currentOperation)
+				switch(currentOperation)
 				{
 					case REQUEST_ALL:
 						sendAllVariables();
-						break;
+					break;
 
 					case READ:
 
-						break;
+					break;
 
 					case WRITE:
 						writeVariable(currentTarget, totalPayload, databuffer);
-						break;
+					break;
 				}
 			}
 			else
-			{
+			{	
 				Serial.println("CRC MISMATCH!");
 			}
 			currentState = WAITING_HEADER;
-
-			break;
+				
+		break;
 	}
 
 }
@@ -174,4 +174,5 @@ void Exposer::writeVariable(uint8_t target, uint8_t totalPayload, uint8_t* datab
 	{
 		* (uint8_t*)registeredAdresses[target+i] = databuffer[i];
 	}
+
 }
