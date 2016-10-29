@@ -84,9 +84,7 @@ class SerialExposer:
         try:
             self.byte_buffer += a
         except TypeError:
-            #print("a", ord(a), a, bytearray([ord(a)]))
             self.byte_buffer += bytearray([ord(a)])
-        #print(self.byte_buffer)
 
     def _unpack(self, a, vtype):
         """
@@ -167,7 +165,6 @@ class SerialExposer:
             self._serialize8(item)
 
         self._serialize8(crc)
-        #print(self.byte_buffer, [a for a in self.byte_buffer])
         self.ser.write(self.byte_buffer)
 
     def _repack(self, data, varType):
@@ -285,7 +282,6 @@ class SerialExposer:
             if name == varname:
                 self._packu8(self._READ, i, [0])
                 received = self._waitForMsg(self._READ, i)
-                #print(i,received)
                 return received
 
     def _processMessage(self):
@@ -316,16 +312,15 @@ class SerialExposer:
         :param char:
         :return:
         """
-        #print(self.status)
         if type(char) is not int:
             char = ord(char)
+
         if self._status == self._WAITING_HEADER:
             if char == ord('<'):
                 self._status = self._WAITING_OPERATION
                 self._crc = 0 ^ ord('<')
             else:
                 pass
-                #sys.stdout.write(chr(char))
 
         elif self._status == self._WAITING_OPERATION:
             self._operation = char
