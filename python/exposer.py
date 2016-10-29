@@ -39,12 +39,21 @@ class SerialExposer:
     _messageBuffer = {}
 
     def __init__(self, port):
+        """
+        Instantiates a new SerialExposer
+        :param port: (string) com port to connect to
+        """
         self.ser = serial.Serial(port=port,
                                  baudrate=115200,
                                  timeout=0.01)
         self.byte_buffer = bytearray()
 
     def _serialize8(self, a):
+        """
+        Adds a byte to the byte buffer
+        :param a: byte-like value (int or char in [0, 255])
+        :return:
+        """
         if isinstance(a, int):
             a = chr(a)
         try:
@@ -55,6 +64,12 @@ class SerialExposer:
         #print(self.byte_buffer)
 
     def _unpack(self, a, vtype):
+        """
+        Unpacks a larger variable into the appropriate number of bytes
+        :param a: variable to unpack
+        :param vtype: type of the variable
+        :return: byte or array of bytes
+        """
 
         if vtype == "_uint8_t":
             return a
@@ -104,6 +119,13 @@ class SerialExposer:
         self.ser.write(chr(value))
 
     def _packu8(self, operation, target=0, data=[]):
+        """
+        Assembles the data into a formatted message with CRC, and sends it via serial.
+        :param operation: desired operation (write, read, or request_all)
+        :param target: (int) target variable index
+        :param data: byte array of unpacked data
+        :return: None
+        """
         self.byte_buffer = bytearray()
         header = ord('<')
         self._serialize8(header)
@@ -133,6 +155,12 @@ class SerialExposer:
         self.ser.write(self.byte_buffer)
 
     def _repack(self, data, varType):
+        """
+        Assembles array of data bytes into a variable of type varType
+        :param data: bytearray of data
+        :param varType: Variable type
+        :return: Variable of type varType
+        """
         if varType == "_uint8_t":
             return data
         elif varType == "_uint16_t":
@@ -165,6 +193,13 @@ class SerialExposer:
             return data.decode("UTF-8")
 
     def _waitForMsg(self, op, target, timeout=0.2):
+        """
+        Waits for a specified message, or until timeout expires
+        :param op: desired message operation
+        :param target: desired message target
+        :param timeout: time until timeout in seconds
+        :return: received message data
+        """
         self._messageBuffer.pop((op, target), None)
         start = time.time()
         while (op, target) not in self._messageBuffer.keys():
@@ -177,20 +212,38 @@ class SerialExposer:
         return self._repack(data, self._variables[target][1])
 
     def requestAll(self):
+        """
+        sends a REQUEST_ALL message
+        :return: None
+        """
         while len(self._variables) == 0:
             self._packu8(self._REQUEST_ALL)
             self._waitForMsg(self._REQUEST_ALL, 0)
 
     def getVarNames(self):
+        """
+        :return: List of all remote variable names, ordered accordingly to their indexes
+        """
         return [a[1][0].decode("UTF-8") for a in self._variables.items()]
 
     def setVar(self, varname, value):
+        """
+        sends a WRITE message to set 'varname' to value 'value'
+        :param varname: (string) name of the desired variable
+        :param value: value to set on the variable
+        :return: None
+        """
         for i, var in self._variables.items():
             name, typ = var
             if name == varname:
                 self._packu8(self._WRITE, i, self._unpack(value, typ))
 
     def getVar(self, varname):
+        """
+        Reads variable varname
+        :param varname: name of variable to read
+        :return: varname's value on the remote device
+        """
         varname = varname.encode("UTF-8")
         for i, var in self._variables.items():
             name, typ = var
@@ -201,6 +254,10 @@ class SerialExposer:
                 return received
 
     def _processMessage(self):
+        """
+        processes the received message
+        :return:
+        """
         operationNames = ["REQUEST ALL", "WRITE", "READ"]
         operationName = operationNames[self._operation - 33]
 
@@ -213,6 +270,11 @@ class SerialExposer:
             self._messageBuffer[(self._operation, self._target)] = self._dataBuffer
 
     def _processByte(self, char):
+        """
+        Processes a byte through the protocol
+        :param char:
+        :return:
+        """
         #print(self.status)
         if not type(char) is int:
             char = ord(char)
