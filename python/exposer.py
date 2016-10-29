@@ -5,6 +5,23 @@ import struct
 
 xrange = range
 
+class TransparentLayer(object):
+    serialExposer = None
+    def __init__(self, serialExposer):
+        self.serialExposer = serialExposer
+
+    def __getattr__(self, item):
+        if item in self.__dict__:
+            return self.__dict__[item]
+        else:
+            return self.serialExposer.getVar(item)
+
+    def __setattr__(self, key, value):
+        if key == "serialExposer":
+            self.__dict__[key] = value
+        else:
+            self.serialExposer.setVar(key, value)
+
 class SerialExposer:
     _WAITING_HEADER = 0     # '<'
     _WAITING_OPERATION = 1  # request_All, read, write
@@ -38,6 +55,8 @@ class SerialExposer:
 
     _messageBuffer = {}
 
+    transparentLayer = None
+
     def __init__(self, port):
         """
         Instantiates a new SerialExposer
@@ -47,6 +66,7 @@ class SerialExposer:
                                  baudrate=115200,
                                  timeout=0.01)
         self.byte_buffer = bytearray()
+        self.transparentLayer = TransparentLayer(self)
 
     def _serialize8(self, a):
         """

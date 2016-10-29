@@ -10,7 +10,12 @@ comm.requestAll()
 print(comm.getVarNames())
 
 # Equivalent to "testuint8 = 0;"
-comm.setVar("testuint8",10)
+comm.setVar("testuint8",18)
 
 # Equivalent to "testuint8 = 0;"
 print(comm.getVar("testuint8"))
+
+remote = comm.transparentLayer
+
+remote.testuint8 = 15
+print(remote.testuint8)
