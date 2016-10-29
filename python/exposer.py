@@ -34,16 +34,6 @@ class SerialExposer:
              "_float",
              "_string"]
 
-    _testValues = {"_uint8_t": [0, 255],
-                  "_uint16_t": [0, 2352],
-                  "_uint32_t": [0, 2325],
-                  "_int8_t": [-120, 0, -120],
-                  "_int16_t": [-20000, 0, -20000],
-                  "_int32_t": [-(2 ** 30), (2 ** 30), -30000],
-                  "_float": [-0.16, 34.12],
-                  "_string": ["batatadoce", "lorem ipsum dolor sit amet"],
-                    }
-
     _variables = {}
 
     _messageBuffer = {}
@@ -274,7 +264,19 @@ class SerialExposer:
             self._status = self._WAITING_HEADER
 
 
+
 if __name__ == "__main__":
+
+    testValues = {"_uint8_t": [0, 255],
+                  "_uint16_t": [0, 2352],
+                  "_uint32_t": [0, 2325],
+                  "_int8_t": [-120, 0, -120],
+                  "_int16_t": [-20000, 0, -20000],
+                  "_int32_t": [-(2 ** 30), (2 ** 30), -30000],
+                  "_float": [-0.16, 34.12],
+                  "_string": ["batatadoce", "lorem ipsum dolor sit amet"],
+                    }
+
     errors = 0
 
     if len(sys.argv) == 2:
@@ -298,7 +300,7 @@ if __name__ == "__main__":
     
     for index, var in itera:
         name, vartype = var
-        varRange = comm._testValues[vartype]
+        varRange = testValues[vartype]
 
         for value in varRange:
             comm._packu8(comm._WRITE, index, comm._unpack(value, vartype))
