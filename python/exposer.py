@@ -1,12 +1,14 @@
-import serial
 import time
 import sys
 import struct
+import serial
 
 xrange = range
 
+
 class TransparentLayer(object):
     serialExposer = None
+
     def __init__(self, serialExposer):
         self.serialExposer = serialExposer
 
@@ -23,6 +25,9 @@ class TransparentLayer(object):
             self.serialExposer.setVar(key, value)
 
 class SerialExposer:
+    """
+    Class implementing Exposer's protocol in Python
+    """
     _WAITING_HEADER = 0     # '<'
     _WAITING_OPERATION = 1  # request_All, read, write
     _WAITING_TARGET = 2     # 0-255. variable register
@@ -43,13 +48,13 @@ class SerialExposer:
     _target = 0
 
     _types = ["_uint8_t",
-             "_uint16_t",
-             "_uint32_t",
-             "_int8_t",
-             "_int16_t",
-             "_int32_t",
-             "_float",
-             "_string"]
+              "_uint16_t",
+              "_uint32_t",
+              "_int8_t",
+              "_int16_t",
+              "_int32_t",
+              "_float",
+              "_string"]
 
     _variables = {}
 
@@ -80,7 +85,7 @@ class SerialExposer:
             self.byte_buffer += a
         except TypeError:
             #print("a", ord(a), a, bytearray([ord(a)]))
-            self.byte_buffer += bytearray([ord(a)]) 
+            self.byte_buffer += bytearray([ord(a)])
         #print(self.byte_buffer)
 
     def _unpack(self, a, vtype):
@@ -122,9 +127,9 @@ class SerialExposer:
             b = struct.pack('<f', a)
             try:
                 return [b[i] for i in xrange(0, 4)]
-            except TypeError: 
+            except TypeError:
                 return [ord(b[i]) for i in xrange(0, 4)]
-            
+
         elif vtype == "_string":
             return [b for b in a.encode("UTF-8")]
         return
@@ -180,25 +185,25 @@ class SerialExposer:
             return data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24)
         elif varType == "_int8_t":
             if data > 127:
-                data = -2**8 +data
+                data += -2 ** 8
             return data
         elif varType == "_int16_t":
             data = data[0] + (data[1] << 8)
             if data > 2**15 - 1:
-                data = - 2 ** 16 + data
+                data += - 2 ** 16
             return data
 
         elif varType == "_int32_t":
-            data =  data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24)
+            data = data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24)
             if data > 2 ** 31 - 1:
-                data = - 2 ** 32 + data
+                data += - 2 ** 32
             return data
 
         elif varType == "_float":
             try:
                 b = struct.unpack('<f', str(data))
             except TypeError:
-                b = struct.unpack('<f', data) 
+                b = struct.unpack('<f', data)
             return b[0]
         elif varType == "_string":
             return data.decode("UTF-8")
@@ -299,6 +304,12 @@ class SerialExposer:
         else:
             self._messageBuffer[(self._operation, self._target)] = self._dataBuffer
 
+    def var_iter(self):
+        try:
+            return self._variables.iteritems()
+        except:
+            return self._variables.items()
+
     def _processByte(self, char):
         """
         Processes a byte through the protocol
@@ -306,7 +317,7 @@ class SerialExposer:
         :return:
         """
         #print(self.status)
-        if not type(char) is int:
+        if type(char) is not int:
             char = ord(char)
         if self._status == self._WAITING_HEADER:
             if char == ord('<'):
@@ -323,7 +334,7 @@ class SerialExposer:
                 self._status = self._WAITING_TARGET
                 self._crc ^= self._operation
             else:
-                print ("bad operation!", self._operation)
+                print("bad operation!", self._operation)
                 self._status = self._WAITING_HEADER
 
         elif self._status == self._WAITING_TARGET:
@@ -366,8 +377,7 @@ if __name__ == "__main__":
                   "_int16_t": [-20000, 0, -20000],
                   "_int32_t": [-(2 ** 30), (2 ** 30), -30000],
                   "_float": [-0.16, 34.12],
-                  "_string": ["batatadoce", "lorem ipsum dolor sit amet"],
-                    }
+                  "_string": ["batatadoce", "lorem ipsum dolor sit amet"]}
 
     errors = 0
 
@@ -378,32 +388,22 @@ if __name__ == "__main__":
     comm = SerialExposer(port)
     comm.requestAll()
 
-    try:
-        itera = comm._variables.iteritems()
-    except:
-        itera = comm._variables.items()
-    for key, value in itera:
-        print (key, value)
-    
-    try:
-        itera = comm._variables.iteritems()
-    except:
-        itera = comm._variables.items()
-    
-    for index, var in itera:
+    for key, value in comm.var_iter():
+        print(key, value)
+
+    for index, var in comm.var_iter():
         name, vartype = var
         varRange = testValues[vartype]
 
         for value in varRange:
-            comm._packu8(comm._WRITE, index, comm._unpack(value, vartype))
-            comm._packu8(comm._READ, index, [0])
-            received = comm._waitForMsg(comm._READ, index)
+            comm.setVar(name, value)
+            received = comm.getVar(name)
             if vartype != "_string":
-                print (((value - received) < 0.01), ", Type: ", vartype, "sent: ", value, "received: ", received, ", Bytes: ", comm._unpack(value, vartype))
+                print(((value - received) < 0.01), ", Type: ", vartype, "sent: ", value, "received: ", received, ", Bytes: ", comm._unpack(value, vartype))
                 if (value - received) > 0.01:
                     errors += 1
             else:
-                print (value, received)
+                print(value, received)
                 if value != received:
                     errors += 1
     exit(errors)
