@@ -109,15 +109,6 @@ class SerialExposer:
             return [b for b in a.encode("UTF-8")]
         return
 
-    def _send_16(self, value):
-        high = chr(value >> 8)
-        low = chr(value % 256)
-        self.ser.write(low)
-        self.ser.write(high)
-
-    def _send_8(self, value):
-        self.ser.write(chr(value))
-
     def _packu8(self, operation, target=0, data=[]):
         """
         Assembles the data into a formatted message with CRC, and sends it via serial.
