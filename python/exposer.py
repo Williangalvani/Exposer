@@ -6,26 +6,26 @@ import struct
 xrange = range
 
 class SerialExposer:
-    WAITING_HEADER = 0     # '<'
-    WAITING_OPERATION = 1  # request_All, read, write
-    WAITING_TARGET = 2     # 0-255. variable register
-    WAITING_PAYLOAD = 3    # 0-255. data bytes to receive
-    WAITING_DATA = 4       # data itself
-    WAITING_CRC = 5
+    _WAITING_HEADER = 0     # '<'
+    _WAITING_OPERATION = 1  # request_All, read, write
+    _WAITING_TARGET = 2     # 0-255. variable register
+    _WAITING_PAYLOAD = 3    # 0-255. data bytes to receive
+    _WAITING_DATA = 4       # data itself
+    _WAITING_CRC = 5
 
-    REQUEST_ALL = 33
-    WRITE = 34
-    READ = 35
+    _REQUEST_ALL = 33
+    _WRITE = 34
+    _READ = 35
 
-    dataBuffer = bytearray()
-    payloadSize = 0
-    payloadLeft = 0
-    crc = 0
-    status = WAITING_HEADER
-    operation = 0
-    target = 0
+    _dataBuffer = bytearray()
+    _payloadSize = 0
+    _payloadLeft = 0
+    _crc = 0
+    _status = _WAITING_HEADER
+    _operation = 0
+    _target = 0
 
-    types = ["_uint8_t",
+    _types = ["_uint8_t",
              "_uint16_t",
              "_uint32_t",
              "_int8_t",
@@ -34,7 +34,7 @@ class SerialExposer:
              "_float",
              "_string"]
 
-    testValues = {"_uint8_t": [0, 255],
+    _testValues = {"_uint8_t": [0, 255],
                   "_uint16_t": [0, 2352],
                   "_uint32_t": [0, 2325],
                   "_int8_t": [-120, 0, -120],
@@ -42,11 +42,11 @@ class SerialExposer:
                   "_int32_t": [-(2 ** 30), (2 ** 30), -30000],
                   "_float": [-0.16, 34.12],
                   "_string": ["batatadoce", "lorem ipsum dolor sit amet"],
-                  }
+                    }
 
-    variables = {}
+    _variables = {}
 
-    messageBuffer = {}
+    _messageBuffer = {}
 
     def __init__(self, port):
         self.ser = serial.Serial(port=port,
@@ -54,7 +54,7 @@ class SerialExposer:
                                  timeout=0.01)
         self.byte_buffer = bytearray()
 
-    def serialize8(self, a):
+    def _serialize8(self, a):
         if isinstance(a, int):
             a = chr(a)
         try:
@@ -64,7 +64,7 @@ class SerialExposer:
             self.byte_buffer += bytearray([ord(a)]) 
         #print(self.byte_buffer)
 
-    def unpack(self, a, vtype):
+    def _unpack(self, a, vtype):
 
         if vtype == "_uint8_t":
             return a
@@ -104,23 +104,23 @@ class SerialExposer:
             return [b for b in a.encode("UTF-8")]
         return
 
-    def send_16(self, value):
+    def _send_16(self, value):
         high = chr(value >> 8)
         low = chr(value % 256)
         self.ser.write(low)
         self.ser.write(high)
 
-    def send_8(self, value):
+    def _send_8(self, value):
         self.ser.write(chr(value))
 
-    def packu8(self, operation, target=0, data=[]):
+    def _packu8(self, operation, target=0, data=[]):
         self.byte_buffer = bytearray()
         header = ord('<')
-        self.serialize8(header)
-        self.serialize8(operation)
+        self._serialize8(header)
+        self._serialize8(operation)
         crc = header ^ operation
 
-        self.serialize8(target)
+        self._serialize8(target)
         crc ^= target
 
         if type(data) is int:
@@ -128,7 +128,7 @@ class SerialExposer:
 
         size = len(data)
 
-        self.serialize8(size)
+        self._serialize8(size)
         crc ^= size
         for item in data:
             try:
@@ -136,13 +136,13 @@ class SerialExposer:
             except:
                 crc ^= ord(item)
 
-            self.serialize8(item)
+            self._serialize8(item)
 
-        self.serialize8(crc)
+        self._serialize8(crc)
         #print(self.byte_buffer, [a for a in self.byte_buffer])
         self.ser.write(self.byte_buffer)
 
-    def repack(self, data, varType):
+    def _repack(self, data, varType):
         if varType == "_uint8_t":
             return data
         elif varType == "_uint16_t":
@@ -174,104 +174,104 @@ class SerialExposer:
         elif varType == "_string":
             return data.decode("UTF-8")
 
-    def waitForMsg(self, op, target, timeout=0.2):
-        self.messageBuffer.pop((op, target), None)
+    def _waitForMsg(self, op, target, timeout=0.2):
+        self._messageBuffer.pop((op, target), None)
         start = time.time()
-        while (op, target) not in self.messageBuffer.keys():
+        while (op, target) not in self._messageBuffer.keys():
             for char in self.ser.readall():
-                self.processByte(char)
+                self._processByte(char)
             time.sleep(0.001)
             if (time.time() - start) > timeout:
                 return None
-        data = self.messageBuffer.pop((op, target), None)
-        return self.repack(data, self.variables[target][1])
+        data = self._messageBuffer.pop((op, target), None)
+        return self._repack(data, self._variables[target][1])
 
     def requestAll(self):
-        while len(self.variables) == 0:
-            self.packu8(self.REQUEST_ALL)
-            self.waitForMsg(self.REQUEST_ALL, 0)
+        while len(self._variables) == 0:
+            self._packu8(self._REQUEST_ALL)
+            self._waitForMsg(self._REQUEST_ALL, 0)
 
     def getVarNames(self):
-        return [a[1][0].decode("UTF-8") for a in self.variables.items()]
+        return [a[1][0].decode("UTF-8") for a in self._variables.items()]
 
-    def setVar(self,varname,value):
-        for i, var in self.variables.items():
+    def setVar(self, varname, value):
+        for i, var in self._variables.items():
             name, typ = var
             if name == varname:
-                self.packu8(self.WRITE, i, self.unpack(value, typ))
+                self._packu8(self._WRITE, i, self._unpack(value, typ))
 
-    def getVar(self,varname):
+    def getVar(self, varname):
         varname = varname.encode("UTF-8")
-        for i, var in self.variables.items():
+        for i, var in self._variables.items():
             name, typ = var
             if name == varname:
-                self.packu8(self.READ, i, [0])
-                received = self.waitForMsg(self.READ, i)
+                self._packu8(self._READ, i, [0])
+                received = self._waitForMsg(self._READ, i)
                 #print(i,received)
                 return received
 
-    def processMessage(self):
+    def _processMessage(self):
         operationNames = ["REQUEST ALL", "WRITE", "READ"]
-        operationName = operationNames[self.operation - 33]
+        operationName = operationNames[self._operation - 33]
 
         if operationName == "REQUEST ALL":
-            self.variables[self.target] = (self.dataBuffer[:-1], self.types[self.dataBuffer[-1]])
+            self._variables[self._target] = (self._dataBuffer[:-1], self._types[self._dataBuffer[-1]])
 
-        if len(self.dataBuffer) == 1:
-            self.messageBuffer[(self.operation, self.target)] = self.dataBuffer[0]
+        if len(self._dataBuffer) == 1:
+            self._messageBuffer[(self._operation, self._target)] = self._dataBuffer[0]
         else:
-            self.messageBuffer[(self.operation, self.target)] = self.dataBuffer
+            self._messageBuffer[(self._operation, self._target)] = self._dataBuffer
 
-    def processByte(self, char):
+    def _processByte(self, char):
         #print(self.status)
         if not type(char) is int:
             char = ord(char)
-        if self.status == self.WAITING_HEADER:
+        if self._status == self._WAITING_HEADER:
             if char == ord('<'):
-                self.status = self.WAITING_OPERATION
-                self.crc = 0 ^ ord('<')
+                self._status = self._WAITING_OPERATION
+                self._crc = 0 ^ ord('<')
             else:
                 pass
                 #sys.stdout.write(chr(char))
 
-        elif self.status == self.WAITING_OPERATION:
-            self.operation = char
+        elif self._status == self._WAITING_OPERATION:
+            self._operation = char
 
-            if self.operation in (self.REQUEST_ALL, self.READ, self.WRITE):
-                self.status = self.WAITING_TARGET
-                self.crc ^= self.operation
+            if self._operation in (self._REQUEST_ALL, self._READ, self._WRITE):
+                self._status = self._WAITING_TARGET
+                self._crc ^= self._operation
             else:
-                print ("bad operation!", self.operation)
-                self.status = self.WAITING_HEADER
+                print ("bad operation!", self._operation)
+                self._status = self._WAITING_HEADER
 
-        elif self.status == self.WAITING_TARGET:
-            self.target = char
-            if self.target in range(50):  # bad validation
-                self.status = self.WAITING_PAYLOAD
-                self.crc ^= self.target
+        elif self._status == self._WAITING_TARGET:
+            self._target = char
+            if self._target in range(50):  # bad validation
+                self._status = self._WAITING_PAYLOAD
+                self._crc ^= self._target
 
-        elif self.status == self.WAITING_PAYLOAD:
-            self.payloadSize = char
-            self.payloadLeft = self.payloadSize
+        elif self._status == self._WAITING_PAYLOAD:
+            self._payloadSize = char
+            self._payloadLeft = self._payloadSize
 
-            self.dataBuffer = bytearray()
-            self.crc ^= self.payloadSize
-            self.status = self.WAITING_DATA
+            self._dataBuffer = bytearray()
+            self._crc ^= self._payloadSize
+            self._status = self._WAITING_DATA
 
-        elif self.status == self.WAITING_DATA:
-            if self.payloadLeft > 0:
-                self.dataBuffer += bytearray([char])
-                self.crc ^= char
-                self.payloadLeft -= 1
-            if self.payloadLeft == 0:
-                self.status = self.WAITING_CRC
+        elif self._status == self._WAITING_DATA:
+            if self._payloadLeft > 0:
+                self._dataBuffer += bytearray([char])
+                self._crc ^= char
+                self._payloadLeft -= 1
+            if self._payloadLeft == 0:
+                self._status = self._WAITING_CRC
 
-        elif self.status == self.WAITING_CRC:
-            if self.crc == char:
-                self.processMessage()
+        elif self._status == self._WAITING_CRC:
+            if self._crc == char:
+                self._processMessage()
             else:
-                print("bad crc!", self.crc, ord(char))
-            self.status = self.WAITING_HEADER
+                print("bad crc!", self._crc, ord(char))
+            self._status = self._WAITING_HEADER
 
 
 if __name__ == "__main__":
@@ -285,27 +285,27 @@ if __name__ == "__main__":
     comm.requestAll()
 
     try:
-        itera = comm.variables.iteritems()
+        itera = comm._variables.iteritems()
     except:
-        itera = comm.variables.items()
+        itera = comm._variables.items()
     for key, value in itera:
         print (key, value)
     
     try:
-        itera = comm.variables.iteritems()
+        itera = comm._variables.iteritems()
     except:
-        itera = comm.variables.items()
+        itera = comm._variables.items()
     
     for index, var in itera:
         name, vartype = var
-        varRange = comm.testValues[vartype]
+        varRange = comm._testValues[vartype]
 
         for value in varRange:
-            comm.packu8(comm.WRITE, index, comm.unpack(value, vartype))
-            comm.packu8(comm.READ, index, [0])
-            received = comm.waitForMsg(comm.READ, index)
+            comm._packu8(comm._WRITE, index, comm._unpack(value, vartype))
+            comm._packu8(comm._READ, index, [0])
+            received = comm._waitForMsg(comm._READ, index)
             if vartype != "_string":
-                print (((value - received) < 0.01), ", Type: ", vartype, "sent: ", value, "received: ", received, ", Bytes: ", comm.unpack(value, vartype))
+                print (((value - received) < 0.01), ", Type: ", vartype, "sent: ", value, "received: ", received, ", Bytes: ", comm._unpack(value, vartype))
                 if (value - received) > 0.01:
                     errors += 1
             else:
