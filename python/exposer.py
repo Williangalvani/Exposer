@@ -244,8 +244,18 @@ class SerialExposer:
         :param value: value to set on the variable
         :return: None
         """
+
+        try:
+            varname = varname.decode("UTF-8")
+        except:
+            pass
+
         for i, var in self._variables.items():
             name, typ = var
+            try:
+                name = name.decode("UTF-8")
+            except:
+                pass
             if name == varname:
                 self._packu8(self._WRITE, i, self._unpack(value, typ))
 
@@ -255,9 +265,18 @@ class SerialExposer:
         :param varname: name of variable to read
         :return: varname's value on the remote device
         """
-        varname = varname.encode("UTF-8")
+
+        try:
+            varname = varname.decode("UTF-8")
+        except:
+            pass
+
         for i, var in self._variables.items():
             name, typ = var
+            try:
+                name = name.decode("UTF-8")
+            except:
+                pass
             if name == varname:
                 self._packu8(self._READ, i, [0])
                 received = self._waitForMsg(self._READ, i)
