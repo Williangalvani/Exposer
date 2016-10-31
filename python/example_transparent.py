@@ -9,15 +9,15 @@ else:
 
 # Instantiate a "SerialExposer" object named "comm"
 comm = SerialExposer(port)
-
-# Requests all registered variables, ordered by their indexes
 comm.requestAll()
 
-# This prints all of the received variable names
-print(comm.getVarNames())
+# Transparent Mode, enables an easier interface to use
+remote = comm.transparentLayer
 
-# Equivalent to running "testuint8 = 18;" on the arduino
-comm.setVar("testuint8",18)
+# Equivalent to "testuint8 = 18;"
+remote.testuint8 = 18
 
-# Reads the variable "testuint8" and prints it's value
-print(comm.getVar("testuint8"))
+# Reads and prints testuint8's value
+print(remote.testuint8)
+
+
