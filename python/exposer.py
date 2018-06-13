@@ -62,13 +62,13 @@ class SerialExposer:
 
     transparentLayer = None
 
-    def __init__(self, port):
+    def __init__(self, port, baudrate=115200):
         """
         Instantiates a new SerialExposer
         :param port: (string) com port to connect to
         """
         self.ser = serial.Serial(port=port,
-                                 baudrate=115200,
+                                 baudrate=baudrate,
                                  timeout=0.01)
         self.byte_buffer = bytearray()
         self.transparentLayer = TransparentLayer(self)
